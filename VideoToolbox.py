@@ -2,6 +2,7 @@ import sys, os, subprocess, threading
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QLabel, QFileDialog, QCheckBox, QRadioButton, 
                              QGroupBox, QLineEdit, QTextEdit, QTabWidget)
+from PyQt5.QtCore import Qt
 
 class QuaklerApp(QMainWindow):
     def __init__(self):
@@ -9,11 +10,51 @@ class QuaklerApp(QMainWindow):
         self.setWindowTitle("Quakler - By Penelope Rose")
         self.resize(600, 700)
         
+        # Apply Apple Glass UI (Vibrancy)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        try:
+            from BlurWindow.blurWindow import GlobalBlur
+            GlobalBlur(self.winId(), Dark=True, QWidget=self)
+        except Exception:
+            pass # Fallback if library fails
+            
+        self.setStyleSheet("""
+            QMainWindow { background: transparent; }
+            QWidget { background: transparent; color: #EEEEEE; font-size: 13px; }
+            QPushButton {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 6px; padding: 6px 12px; font-weight: bold;
+            }
+            QPushButton:hover { background: rgba(255, 255, 255, 0.2); }
+            QPushButton:pressed { background: rgba(255, 255, 255, 0.05); }
+            QPushButton:disabled { color: rgba(255, 255, 255, 0.3); }
+            QTabWidget::pane {
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(0, 0, 0, 0.3); border-radius: 8px;
+            }
+            QTabBar::tab {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 6px 15px; border-top-left-radius: 6px; border-top-right-radius: 6px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected { background: rgba(255, 255, 255, 0.2); border-bottom: none; }
+            QLineEdit, QTextEdit {
+                background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 5px; padding: 5px; color: white;
+            }
+            QCheckBox::indicator, QRadioButton::indicator {
+                width: 16px; height: 16px;
+            }
+        """)
+        
         self.videos = []
         self.watermark_path = ""
         
         w = QWidget()
         l = QVBoxLayout(w)
+        l.setContentsMargins(20, 20, 20, 20)
         self.setCentralWidget(w)
         
         # Files
@@ -23,6 +64,7 @@ class QuaklerApp(QMainWindow):
         l.addWidget(self.btn_vids)
         
         self.lbl_vids = QLabel("0 videos selected")
+        self.lbl_vids.setStyleSheet("color: #AAAAAA;")
         l.addWidget(self.lbl_vids)
         
         self.btn_wm = QPushButton("Select Watermark (.png)")
@@ -86,6 +128,7 @@ class QuaklerApp(QMainWindow):
         l2.addStretch()
         
         self.btn_run = QPushButton("Start Processing")
+        self.btn_run.setStyleSheet("background: rgba(0, 150, 255, 0.4); border: 1px solid rgba(0, 150, 255, 0.8);")
         self.btn_run.clicked.connect(self.run)
         l.addWidget(self.btn_run)
         
@@ -94,7 +137,8 @@ class QuaklerApp(QMainWindow):
         l.addWidget(self.log_txt)
         
         copy = QLabel("<i>© 2026 Penelope Rose. Proprietary License. All rights reserved.</i>")
-        copy.setStyleSheet("color: gray;")
+        copy.setStyleSheet("color: #888888; font-size: 11px;")
+        copy.setAlignment(Qt.AlignCenter)
         l.addWidget(copy)
 
     def sel_vids(self):
