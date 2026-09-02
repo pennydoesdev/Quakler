@@ -160,13 +160,13 @@ class QuaklerApp(QMainWindow):
                     srt = base + ".srt"
                 
                 if self.chk_audio.isChecked():
-                    subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", vid, "-q:a", "0", "-map", "a", out+".mp3"])
+                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", vid, "-q:a", "0", "-map", "a", out+".mp3"], check=True)
                     continue
                 
                 ffmeta = None
                 if self.chap_path and os.path.exists(self.chap_path):
                     try:
-                        dur_out = subprocess.check_output(["/Users/penelope/homebrew/bin/ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", vid])
+                        dur_out = subprocess.check_output(["/Applications/Quakler.app/Contents/MacOS/ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", vid])
                         duration = float(dur_out.decode().strip())
                         with open(self.chap_path) as cf:
                             lines = cf.read().strip().split("\n")
@@ -190,10 +190,27 @@ class QuaklerApp(QMainWindow):
                     except Exception as e:
                         self.log(f"Chapter Error: {e}")
 
-                cmd = ["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", vid]
-                if ffmeta: cmd.extend(["-i", ffmeta, "-map_metadata", "1"])
-                if self.watermark_path: cmd.extend(["-i", self.watermark_path])
+                cmd = ["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", vid]
                 
+                in_idx = 1
+                meta_idx = -1
+                if ffmeta: 
+                    cmd.extend(["-i", ffmeta])
+                    meta_idx = in_idx
+                    in_idx += 1
+                    
+                if self.watermark_path: 
+                    cmd.extend(["-i", self.watermark_path])
+                    wm_idx = in_idx
+                    in_idx += 1
+                
+                # Output Options start here
+                if meta_idx != -1:
+                    cmd.extend(["-map_metadata", str(meta_idx)])
+                    # We also need to map the video and audio streams explicitly if we are using map_metadata, 
+                    # otherwise ffmpeg might map the metadata file differently.
+                    cmd.extend(["-map", "0"])
+                    
                 if self.ent_s.text(): cmd.extend(["-ss", self.ent_s.text()])
                 if self.ent_e.text(): cmd.extend(["-to", self.ent_e.text()])
                 
@@ -223,14 +240,15 @@ class QuaklerApp(QMainWindow):
                 subprocess.run(cmd, check=True)
                 
                 if self.chk_thumb.isChecked():
-                    subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-ss", "00:00:01", "-i", out+".mp4", "-vframes", "1", out+"_thumb.jpg"])
+                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-ss", "00:00:01", "-i", out+".mp4", "-vframes", "1", out+"_thumb.jpg"], check=True)
                 if self.chk_gif.isChecked():
-                    subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", out+".mp4", "-vf", "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse", out+".gif"])
+                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", out+".mp4", "-vf", "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse", out+".gif"], check=True)
                 if self.chk_safe.isChecked():
-                    subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", out+".mp4", "-vframes", "1", "-vf", "drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=red@0.5:t=fill,drawbox=x=iw*0.8:y=ih*0.4:w=iw*0.2:h=ih*0.4:color=red@0.5:t=fill", out+"_safezone.jpg"])
+                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", out+".mp4", "-vframes", "1", "-vf", "drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=red@0.5:t=fill,drawbox=x=iw*0.8:y=ih*0.4:w=iw*0.2:h=ih*0.4:color=red@0.5:t=fill", out+"_safezone.jpg"], check=True)
                     
         except Exception as e:
             self.log(f"Error: {e}")
+            raise e
         finally:
             self.log("Done!")
             self.btn_run.setEnabled(True)
