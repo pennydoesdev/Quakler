@@ -215,7 +215,10 @@ class QuaklerApp(QMainWindow):
                     vf.append(f"[{current_v}]subtitles='{srt.replace(':', '\\:')}'[v{vid_cnt}]")
                     current_v = f"v{vid_cnt}"
                 
-                vf.append(f"[{current_v}]format=yuv420p[v_out]"); current_v = 'v_out'; if vf:
+                
+                vf.append(f"[{current_v}]format=yuv420p[v_out]")
+                current_v = 'v_out'
+                if vf:
                     cmd.extend(["-filter_complex", ";".join(vf), "-map", f"[{current_v}]"])
                 else:
                     cmd.extend(["-map", "0:v"])
