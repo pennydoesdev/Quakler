@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,7 +15,8 @@ int main() {
         }
         char script_path[1024];
         snprintf(script_path, sizeof(script_path), "%s/../Resources/VideoToolbox.py", path);
-        execl("/usr/bin/python3", "python3", script_path, NULL);
+        execl("/Users/penelope/homebrew/bin/python3", "python3", script_path, NULL);
     }
     return 1;
 }
+
