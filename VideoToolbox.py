@@ -200,10 +200,10 @@ class QuaklerApp(QMainWindow):
                 
                 if self.chk_hw.isChecked():
                     c = "h264_videotoolbox" if self.rad_h264.isChecked() else "hevc_videotoolbox"
-                    cmd.extend(["-c:v", c, "-b:v", "5000k"])
+                    cmd.extend(["-c:v", c, "-q:v", "55"])  # Adaptive bitrate for VideoToolbox
                 else:
                     c = "libx264" if self.rad_h264.isChecked() else "libx265"
-                    cmd.extend(["-c:v", c])
+                    cmd.extend(["-c:v", c, "-crf", "28"])  # Adaptive Constant Rate Factor
                     
                 cmd.extend(["-movflags", "+faststart", out+".mp4"])
                 self.log("Rendering Video...")
