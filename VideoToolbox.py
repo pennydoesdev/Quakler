@@ -143,8 +143,8 @@ class QuaklerApp(QMainWindow):
 
     def process(self):
         try:
-            FFMPEG = "/Applications/Quakler.app/Contents/MacOS/ffmpeg"
-            FFPROBE = "/Applications/Quakler.app/Contents/MacOS/ffprobe"
+            FFMPEG = "/Users/penelope/homebrew/Cellar/ffmpeg-full/9.0.1_1/bin/ffmpeg"
+            FFPROBE = "/Users/penelope/homebrew/Cellar/ffmpeg-full/9.0.1_1/bin/ffprobe"
             for vid in self.videos:
                 self.log(f"\nProcessing: {os.path.basename(vid)}")
                 base, _ = os.path.splitext(vid)
