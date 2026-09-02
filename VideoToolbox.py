@@ -9,24 +9,6 @@ class QuaklerApp(QMainWindow):
         super().__init__()
         self.setWindowTitle("Quakler - By Penelope Rose")
         self.resize(600, 700)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        try:
-            from BlurWindow.blurWindow import GlobalBlur
-            GlobalBlur(self.winId(), Dark=True, QWidget=self)
-        except: pass
-            
-        self.setStyleSheet("""
-            QMainWindow { background: transparent; }
-            QWidget { background: transparent; color: #EEEEEE; font-size: 13px; }
-            QPushButton { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; padding: 6px 12px; font-weight: bold; }
-            QPushButton:hover { background: rgba(255, 255, 255, 0.2); }
-            QPushButton:pressed { background: rgba(255, 255, 255, 0.05); }
-            QPushButton:disabled { color: rgba(255, 255, 255, 0.3); }
-            QTabWidget::pane { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3); border-radius: 8px; }
-            QTabBar::tab { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 15px; border-top-left-radius: 6px; border-top-right-radius: 6px; margin-right: 2px; }
-            QTabBar::tab:selected { background: rgba(255, 255, 255, 0.2); border-bottom: none; }
-            QLineEdit, QTextEdit { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 5px; padding: 5px; color: white; }
-        """)
         
         self.videos = []
         self.watermark_path = ""
@@ -43,7 +25,6 @@ class QuaklerApp(QMainWindow):
         l.addWidget(self.btn_vids)
         
         self.lbl_vids = QLabel("0 videos selected")
-        self.lbl_vids.setStyleSheet("color: #AAAAAA;")
         l.addWidget(self.lbl_vids)
         
         hl_wm = QHBoxLayout()
@@ -109,7 +90,7 @@ class QuaklerApp(QMainWindow):
         l2.addStretch()
         
         self.btn_run = QPushButton("Start Processing")
-        self.btn_run.setStyleSheet("background: rgba(0, 150, 255, 0.4); border: 1px solid rgba(0, 150, 255, 0.8);")
+        self.btn_run.setStyleSheet("font-weight: bold; padding: 10px;")
         self.btn_run.clicked.connect(self.run_process)
         l.addWidget(self.btn_run)
         
@@ -118,7 +99,7 @@ class QuaklerApp(QMainWindow):
         l.addWidget(self.log_txt)
         
         copy = QLabel("<i>© 2026 Penelope Rose. Proprietary License. All rights reserved.</i>")
-        copy.setStyleSheet("color: #888888; font-size: 11px;")
+        copy.setStyleSheet("color: gray; font-size: 11px;")
         copy.setAlignment(Qt.AlignCenter)
         l.addWidget(copy)
 
@@ -143,8 +124,8 @@ class QuaklerApp(QMainWindow):
 
     def process(self):
         try:
-            FFMPEG = "/Users/penelope/homebrew/Cellar/ffmpeg-full/9.0.1_1/bin/ffmpeg"
-            FFPROBE = "/Users/penelope/homebrew/Cellar/ffmpeg-full/9.0.1_1/bin/ffprobe"
+            FFMPEG = "/Applications/Quakler.app/Contents/MacOS/ffmpeg"
+            FFPROBE = "/Applications/Quakler.app/Contents/MacOS/ffprobe"
             for vid in self.videos:
                 self.log(f"\nProcessing: {os.path.basename(vid)}")
                 base, _ = os.path.splitext(vid)
@@ -216,10 +197,9 @@ class QuaklerApp(QMainWindow):
                     vf.append(f"[{current_v}]subtitles='{srt_esc}'[v{vid_cnt}]")
                     current_v = f"v{vid_cnt}"
                 
-                
-                vf.append(f"[{current_v}]format=yuv420p[v_out]")
-                current_v = 'v_out'
                 if vf:
+                    vf.append(f"[{current_v}]format=yuv420p[v_out]")
+                    current_v = 'v_out'
                     cmd.extend(["-filter_complex", ";".join(vf), "-map", f"[{current_v}]"])
                 else:
                     cmd.extend(["-map", "0:v"])
@@ -259,6 +239,7 @@ class QuaklerApp(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyle("macOS")
     ex = QuaklerApp()
     ex.show()
     sys.exit(app.exec_())
