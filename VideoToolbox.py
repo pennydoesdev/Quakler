@@ -8,7 +8,68 @@ class QuaklerApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Quakler - By Penelope Rose")
-        self.resize(600, 700)
+        
+        # Golden Ratio window size (Width: 500, Height: 500 * 1.618 = 809)
+        self.resize(500, 809)
+        
+        # Apple Design Standards UI
+        self.setStyleSheet("""
+            QWidget {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-size: 13px;
+            }
+            QPushButton {
+                background-color: rgba(128, 128, 128, 0.15);
+                border: 1px solid rgba(128, 128, 128, 0.3);
+                border-radius: 8px;
+                padding: 7px 14px;
+            }
+            QPushButton:hover {
+                background-color: rgba(128, 128, 128, 0.2);
+            }
+            QPushButton:pressed {
+                background-color: rgba(128, 128, 128, 0.3);
+            }
+            QPushButton#start_btn {
+                background-color: #007AFF;
+                color: white;
+                border: none;
+                border-radius: 12px;
+                padding: 14px;
+                font-size: 15px;
+                font-weight: bold;
+            }
+            QPushButton#start_btn:hover {
+                background-color: #0066D6;
+            }
+            QPushButton#start_btn:pressed {
+                background-color: #0056B3;
+            }
+            QTabWidget::pane {
+                border: 1px solid rgba(128, 128, 128, 0.3);
+                border-radius: 12px;
+                background-color: rgba(128, 128, 128, 0.05);
+            }
+            QTabBar::tab {
+                background: rgba(128, 128, 128, 0.1);
+                border: 1px solid rgba(128, 128, 128, 0.3);
+                padding: 8px 20px;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background: rgba(128, 128, 128, 0.2);
+                border-bottom: none;
+                font-weight: bold;
+            }
+            QLineEdit, QTextEdit {
+                background-color: rgba(128, 128, 128, 0.1);
+                border: 1px solid rgba(128, 128, 128, 0.3);
+                border-radius: 8px;
+                padding: 8px;
+            }
+        """)
         
         self.videos = []
         self.watermark_path = ""
@@ -16,19 +77,22 @@ class QuaklerApp(QMainWindow):
         
         w = QWidget()
         l = QVBoxLayout(w)
-        l.setContentsMargins(20, 20, 20, 20)
+        l.setContentsMargins(25, 25, 25, 25)
+        l.setSpacing(15)
         self.setCentralWidget(w)
         
-        l.addWidget(QLabel("<b>1. Files (Batch Supported)</b>"))
+        l.addWidget(QLabel("<span style='font-size: 16px; font-weight: bold;'>1. Batch Files</span>"))
         self.btn_vids = QPushButton("Select Videos")
         self.btn_vids.clicked.connect(self.sel_vids)
         l.addWidget(self.btn_vids)
         
         self.lbl_vids = QLabel("0 videos selected")
+        self.lbl_vids.setStyleSheet("color: gray; margin-bottom: 10px;")
         l.addWidget(self.lbl_vids)
         
         hl_wm = QHBoxLayout()
-        self.btn_wm = QPushButton("Select Watermark (.png)")
+        hl_wm.setSpacing(10)
+        self.btn_wm = QPushButton("Select Watermark")
         self.btn_wm.clicked.connect(self.sel_wm)
         hl_wm.addWidget(self.btn_wm)
         
@@ -42,7 +106,9 @@ class QuaklerApp(QMainWindow):
         
         t1 = QWidget()
         l1 = QVBoxLayout(t1)
-        tabs.addTab(t1, "Video Options")
+        l1.setContentsMargins(15, 15, 15, 15)
+        l1.setSpacing(10)
+        tabs.addTab(t1, "Video Core")
         
         self.rad_h264 = QRadioButton("H.264 (Compatible)")
         self.rad_h264.setChecked(True)
@@ -50,7 +116,7 @@ class QuaklerApp(QMainWindow):
         l1.addWidget(self.rad_h264)
         l1.addWidget(self.rad_hevc)
         
-        self.chk_hw = QCheckBox("Use Apple Silicon Hardware Acceleration (Blazing Fast)")
+        self.chk_hw = QCheckBox("Apple Silicon Acceleration (Blazing Fast)")
         self.chk_hw.setChecked(True)
         l1.addWidget(self.chk_hw)
         
@@ -73,16 +139,18 @@ class QuaklerApp(QMainWindow):
         
         t2 = QWidget()
         l2 = QVBoxLayout(t2)
+        l2.setContentsMargins(15, 15, 15, 15)
+        l2.setSpacing(10)
         tabs.addTab(t2, "Audio & Extras")
         
-        self.chk_norm = QCheckBox("Normalize Audio (Broadcast Levels)")
-        self.chk_denoise = QCheckBox("Clean Voice (Remove Background Noise)")
+        self.chk_norm = QCheckBox("Normalize Audio (Broadcast)")
+        self.chk_denoise = QCheckBox("Clean Voice (Denoise)")
         self.chk_silence = QCheckBox("Auto-Remove Silence (Jump Cuts)")
-        self.chk_mute = QCheckBox("Mute All Audio (B-Roll mode)")
+        self.chk_mute = QCheckBox("Mute All Audio (B-Roll)")
         self.chk_audio = QCheckBox("Extract Audio Only (.mp3)")
-        self.chk_thumb = QCheckBox("Extract Thumbnail (1s mark)")
-        self.chk_safe = QCheckBox("Generate Social Media Safe-Zone Preview Image")
-        self.chk_gif = QCheckBox("Create GIF clip")
+        self.chk_thumb = QCheckBox("Extract Thumbnail Image")
+        self.chk_safe = QCheckBox("Generate Safe-Zone Preview")
+        self.chk_gif = QCheckBox("Create Looping GIF")
         
         for c in (self.chk_norm, self.chk_denoise, self.chk_silence, self.chk_mute, 
                   self.chk_audio, self.chk_thumb, self.chk_safe, self.chk_gif):
@@ -90,7 +158,7 @@ class QuaklerApp(QMainWindow):
         l2.addStretch()
         
         self.btn_run = QPushButton("Start Processing")
-        self.btn_run.setStyleSheet("font-weight: bold; padding: 10px;")
+        self.btn_run.setObjectName("start_btn")
         self.btn_run.clicked.connect(self.run_process)
         l.addWidget(self.btn_run)
         
@@ -98,7 +166,7 @@ class QuaklerApp(QMainWindow):
         self.log_txt.setReadOnly(True)
         l.addWidget(self.log_txt)
         
-        copy = QLabel("<i>© 2026 Penelope Rose. Proprietary License. All rights reserved.</i>")
+        copy = QLabel("© 2026 Penelope Rose. Proprietary License.")
         copy.setStyleSheet("color: gray; font-size: 11px;")
         copy.setAlignment(Qt.AlignCenter)
         l.addWidget(copy)
@@ -112,7 +180,7 @@ class QuaklerApp(QMainWindow):
         f, _ = QFileDialog.getOpenFileName(self, "Select Watermark", "", "Images (*.png)")
         if f: self.watermark_path = f
     def sel_chap(self):
-        f, _ = QFileDialog.getOpenFileName(self, "Select Chapters (YouTube Format)", "", "Text Files (*.txt)")
+        f, _ = QFileDialog.getOpenFileName(self, "Select Chapters", "", "Text Files (*.txt)")
         if f: self.chap_path = f
     def log(self, msg):
         self.log_txt.append(msg)
@@ -239,7 +307,6 @@ class QuaklerApp(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    app.setStyle("macOS")
     ex = QuaklerApp()
     ex.show()
     sys.exit(app.exec_())
