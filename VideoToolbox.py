@@ -9,7 +9,6 @@ class QuaklerApp(QMainWindow):
         super().__init__()
         self.setWindowTitle("Quakler - By Penelope Rose")
         self.resize(600, 700)
-        
         self.setAttribute(Qt.WA_TranslucentBackground)
         try:
             from BlurWindow.blurWindow import GlobalBlur
@@ -128,19 +127,15 @@ class QuaklerApp(QMainWindow):
         if fs:
             self.videos = fs
             self.lbl_vids.setText(f"{len(fs)} videos selected")
-
     def sel_wm(self):
         f, _ = QFileDialog.getOpenFileName(self, "Select Watermark", "", "Images (*.png)")
         if f: self.watermark_path = f
-        
     def sel_chap(self):
         f, _ = QFileDialog.getOpenFileName(self, "Select Chapters (YouTube Format)", "", "Text Files (*.txt)")
         if f: self.chap_path = f
-
     def log(self, msg):
         self.log_txt.append(msg)
         QApplication.processEvents()
-
     def run_process(self):
         if not self.videos: return
         self.btn_run.setEnabled(False)
@@ -148,6 +143,8 @@ class QuaklerApp(QMainWindow):
 
     def process(self):
         try:
+            FFMPEG = "/Applications/Quakler.app/Contents/MacOS/ffmpeg"
+            FFPROBE = "/Applications/Quakler.app/Contents/MacOS/ffprobe"
             for vid in self.videos:
                 self.log(f"\nProcessing: {os.path.basename(vid)}")
                 base, _ = os.path.splitext(vid)
@@ -160,16 +157,15 @@ class QuaklerApp(QMainWindow):
                     srt = base + ".srt"
                 
                 if self.chk_audio.isChecked():
-                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", vid, "-q:a", "0", "-map", "a", out+".mp3"], check=True)
+                    subprocess.run([FFMPEG, "-y", "-i", vid, "-q:a", "0", "-map", "a", out+".mp3"], check=True)
                     continue
                 
                 ffmeta = None
                 if self.chap_path and os.path.exists(self.chap_path):
                     try:
-                        dur_out = subprocess.check_output(["/Applications/Quakler.app/Contents/MacOS/ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", vid])
+                        dur_out = subprocess.check_output([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", vid])
                         duration = float(dur_out.decode().strip())
-                        with open(self.chap_path) as cf:
-                            lines = cf.read().strip().split("\n")
+                        with open(self.chap_path) as cf: lines = cf.read().strip().split("\n")
                         meta = ";FFMETADATA1\n"
                         chapters = []
                         for line in lines:
@@ -190,43 +186,48 @@ class QuaklerApp(QMainWindow):
                     except Exception as e:
                         self.log(f"Chapter Error: {e}")
 
-                cmd = ["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", vid]
+                cmd = [FFMPEG, "-y", "-i", vid]
+                in_idx, meta_idx, wm_idx = 1, -1, -1
                 
-                in_idx = 1
-                meta_idx = -1
                 if ffmeta: 
                     cmd.extend(["-i", ffmeta])
                     meta_idx = in_idx
                     in_idx += 1
-                    
                 if self.watermark_path: 
                     cmd.extend(["-i", self.watermark_path])
                     wm_idx = in_idx
                     in_idx += 1
                 
-                # Output Options start here
-                if meta_idx != -1:
-                    cmd.extend(["-map_metadata", str(meta_idx)])
-                    # We also need to map the video and audio streams explicitly if we are using map_metadata, 
-                    # otherwise ffmpeg might map the metadata file differently.
-                    cmd.extend(["-map", "0"])
-                    
+                if meta_idx != -1: cmd.extend(["-map_metadata", str(meta_idx)])
                 if self.ent_s.text(): cmd.extend(["-ss", self.ent_s.text()])
                 if self.ent_e.text(): cmd.extend(["-to", self.ent_e.text()])
                 
-                vf, af = [], []
-                if self.chk_crop.isChecked(): vf.append("crop=ih*(9/16):ih")
-                if self.watermark_path: vf.append("overlay=W-w-10:H-h-10")
-                if self.chk_burn.isChecked() and srt: vf.append(f"subtitles='{srt.replace(':', '\\:')}'")
+                vf = []
+                current_v = "0:v"
+                vid_cnt = 1
+                if self.chk_crop.isChecked():
+                    vf.append(f"[{current_v}]crop=ih*(9/16):ih[v{vid_cnt}]")
+                    current_v = f"v{vid_cnt}"; vid_cnt += 1
+                if wm_idx != -1:
+                    vf.append(f"[{current_v}][{wm_idx}:v]overlay=W-w-10:H-h-10[v{vid_cnt}]")
+                    current_v = f"v{vid_cnt}"; vid_cnt += 1
+                if self.chk_burn.isChecked() and srt and os.path.exists(srt) and os.path.getsize(srt) > 0:
+                    vf.append(f"[{current_v}]subtitles='{srt.replace(':', '\\:')}'[v{vid_cnt}]")
+                    current_v = f"v{vid_cnt}"
                 
-                if self.chk_mute.isChecked(): cmd.append("-an")
+                if vf:
+                    cmd.extend(["-filter_complex", ";".join(vf), "-map", f"[{current_v}]"])
                 else:
+                    cmd.extend(["-map", "0:v"])
+                    
+                af = []
+                if not self.chk_mute.isChecked():
                     if self.chk_norm.isChecked(): af.append("loudnorm=I=-16:TP=-1.5:LRA=11")
                     if self.chk_denoise.isChecked(): af.append("afftdn")
                     if self.chk_silence.isChecked(): af.append("silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB")
-                
-                if vf: cmd.extend(["-vf", ",".join(vf)])
-                if af: cmd.extend(["-af", ",".join(af)])
+                    if af:
+                        cmd.extend(["-af", ",".join(af)])
+                    cmd.extend(["-map", "0:a?"])
                 
                 if self.chk_hw.isChecked():
                     c = "h264_videotoolbox" if self.rad_h264.isChecked() else "hevc_videotoolbox"
@@ -240,17 +241,16 @@ class QuaklerApp(QMainWindow):
                 subprocess.run(cmd, check=True)
                 
                 if self.chk_thumb.isChecked():
-                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-ss", "00:00:01", "-i", out+".mp4", "-vframes", "1", out+"_thumb.jpg"], check=True)
+                    subprocess.run([FFMPEG, "-y", "-ss", "00:00:01", "-i", out+".mp4", "-vframes", "1", out+"_thumb.jpg"])
                 if self.chk_gif.isChecked():
-                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", out+".mp4", "-vf", "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse", out+".gif"], check=True)
+                    subprocess.run([FFMPEG, "-y", "-i", out+".mp4", "-vf", "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse", out+".gif"])
                 if self.chk_safe.isChecked():
-                    subprocess.run(["/Applications/Quakler.app/Contents/MacOS/ffmpeg", "-y", "-i", out+".mp4", "-vframes", "1", "-vf", "drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=red@0.5:t=fill,drawbox=x=iw*0.8:y=ih*0.4:w=iw*0.2:h=ih*0.4:color=red@0.5:t=fill", out+"_safezone.jpg"], check=True)
+                    subprocess.run([FFMPEG, "-y", "-i", out+".mp4", "-vframes", "1", "-vf", "drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=red@0.5:t=fill,drawbox=x=iw*0.8:y=ih*0.4:w=iw*0.2:h=ih*0.4:color=red@0.5:t=fill", out+"_safezone.jpg"])
                     
         except Exception as e:
             self.log(f"Error: {e}")
-            raise e
         finally:
-            self.log("Done!")
+            self.log("All tasks complete!")
             self.btn_run.setEnabled(True)
 
 if __name__ == '__main__':
