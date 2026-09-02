@@ -206,7 +206,7 @@ class QuaklerApp(QMainWindow):
                 current_v = "0:v"
                 vid_cnt = 1
                 if self.chk_crop.isChecked():
-                    vf.append(f"[{current_v}]crop=ih*(9/16):ih[v{vid_cnt}]")
+                    vf.append(f"[{current_v}]crop=trunc(ih*9/16/2)*2:ih[v{vid_cnt}]")
                     current_v = f"v{vid_cnt}"; vid_cnt += 1
                 if wm_idx != -1:
                     vf.append(f"[{current_v}][{wm_idx}:v]overlay=W-w-10:H-h-10[v{vid_cnt}]")
