@@ -212,7 +212,8 @@ class QuaklerApp(QMainWindow):
                     vf.append(f"[{current_v}][{wm_idx}:v]overlay=W-w-10:H-h-10[v{vid_cnt}]")
                     current_v = f"v{vid_cnt}"; vid_cnt += 1
                 if self.chk_burn.isChecked() and srt and os.path.exists(srt) and os.path.getsize(srt) > 0:
-                    vf.append(f"[{current_v}]subtitles='{srt.replace(':', '\\:')}'[v{vid_cnt}]")
+                    srt_esc = srt.replace(':', '\\:')
+                    vf.append(f"[{current_v}]subtitles='{srt_esc}'[v{vid_cnt}]")
                     current_v = f"v{vid_cnt}"
                 
                 
