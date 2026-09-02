@@ -1,106 +1,119 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import subprocess, os, threading
+import sys, os, subprocess, threading
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+                             QPushButton, QLabel, QFileDialog, QCheckBox, QRadioButton, 
+                             QGroupBox, QLineEdit, QTextEdit, QTabWidget)
 
-class QuaklerApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Quakler - By Penelope Rose")
-        self.root.geometry("600x650")
-        self.root.resizable(False, False)
+class QuaklerApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Quakler - By Penelope Rose")
+        self.resize(600, 700)
         
         self.videos = []
-        self.watermark = tk.StringVar()
-        self.codec = tk.StringVar(value="h264")
-        self.trim_s = tk.StringVar()
-        self.trim_e = tk.StringVar()
+        self.watermark_path = ""
         
-        self.opts = {
-            'crop916': tk.BooleanVar(),
-            'hwaccel': tk.BooleanVar(value=True),
-            'denoise': tk.BooleanVar(),
-            'silence': tk.BooleanVar(),
-            'norm': tk.BooleanVar(),
-            'mute': tk.BooleanVar(),
-            'audio_only': tk.BooleanVar(),
-            'transcribe': tk.BooleanVar(),
-            'burn_subs': tk.BooleanVar(),
-            'thumb': tk.BooleanVar(),
-            'safe_zone': tk.BooleanVar(),
-            'gif': tk.BooleanVar()
-        }
+        w = QWidget()
+        l = QVBoxLayout(w)
+        self.setCentralWidget(w)
         
-        self.setup_ui()
-
-    def setup_ui(self):
-        f = ttk.Frame(self.root, padding=15)
-        f.pack(fill=tk.BOTH, expand=True)
+        # Files
+        l.addWidget(QLabel("<b>1. Files (Batch Supported)</b>"))
+        self.btn_vids = QPushButton("Select Videos")
+        self.btn_vids.clicked.connect(self.sel_vids)
+        l.addWidget(self.btn_vids)
         
-        ttk.Label(f, text="1. Files (Batch Supported)", font=("", 12, "bold")).pack(anchor=tk.W)
-        ttk.Button(f, text="Select Videos", command=self.sel_vids).pack(fill=tk.X, pady=2)
-        self.vid_lbl = ttk.Label(f, text="0 videos selected", foreground="gray")
-        self.vid_lbl.pack(anchor=tk.W)
+        self.lbl_vids = QLabel("0 videos selected")
+        l.addWidget(self.lbl_vids)
         
-        ttk.Button(f, text="Select Watermark (.png)", command=lambda: self.watermark.set(filedialog.askopenfilename())).pack(fill=tk.X, pady=2)
+        self.btn_wm = QPushButton("Select Watermark (.png)")
+        self.btn_wm.clicked.connect(self.sel_wm)
+        l.addWidget(self.btn_wm)
         
-        nb = ttk.Notebook(f)
-        nb.pack(fill=tk.BOTH, expand=True, pady=10)
+        # Tabs
+        tabs = QTabWidget()
+        l.addWidget(tabs)
         
-        t1 = ttk.Frame(nb, padding=10)
-        t2 = ttk.Frame(nb, padding=10)
-        nb.add(t1, text="Video Options")
-        nb.add(t2, text="Audio & Extras")
+        t1 = QWidget()
+        l1 = QVBoxLayout(t1)
+        tabs.addTab(t1, "Video Options")
         
-        # Tab 1
-        ttk.Radiobutton(t1, text="H.264 (Compatible)", variable=self.codec, value="h264").pack(anchor=tk.W)
-        ttk.Radiobutton(t1, text="H.265 (HEVC)", variable=self.codec, value="hevc").pack(anchor=tk.W)
-        ttk.Checkbutton(t1, text="Use Apple Silicon Hardware Acceleration (Blazing Fast)", variable=self.opts['hwaccel']).pack(anchor=tk.W, pady=5)
+        self.rad_h264 = QRadioButton("H.264 (Compatible)")
+        self.rad_h264.setChecked(True)
+        self.rad_hevc = QRadioButton("H.265 (HEVC)")
+        l1.addWidget(self.rad_h264)
+        l1.addWidget(self.rad_hevc)
         
-        tf = ttk.Frame(t1)
-        tf.pack(anchor=tk.W, pady=5)
-        ttk.Label(tf, text="Trim Start:").pack(side=tk.LEFT)
-        ttk.Entry(tf, textvariable=self.trim_s, width=8).pack(side=tk.LEFT, padx=5)
-        ttk.Label(tf, text="End:").pack(side=tk.LEFT)
-        ttk.Entry(tf, textvariable=self.trim_e, width=8).pack(side=tk.LEFT, padx=5)
+        self.chk_hw = QCheckBox("Use Apple Silicon Hardware Acceleration (Blazing Fast)")
+        self.chk_hw.setChecked(True)
+        l1.addWidget(self.chk_hw)
         
-        ttk.Checkbutton(t1, text="Crop to Vertical (9:16)", variable=self.opts['crop916']).pack(anchor=tk.W)
-        ttk.Checkbutton(t1, text="Transcribe & Create Subtitles (AI)", variable=self.opts['transcribe']).pack(anchor=tk.W)
-        ttk.Checkbutton(t1, text="Hard-Burn Subtitles to Video", variable=self.opts['burn_subs']).pack(anchor=tk.W)
+        hl = QHBoxLayout()
+        hl.addWidget(QLabel("Trim Start:"))
+        self.ent_s = QLineEdit()
+        hl.addWidget(self.ent_s)
+        hl.addWidget(QLabel("End:"))
+        self.ent_e = QLineEdit()
+        hl.addWidget(self.ent_e)
+        l1.addLayout(hl)
+        
+        self.chk_crop = QCheckBox("Crop to Vertical (9:16)")
+        l1.addWidget(self.chk_crop)
+        
+        self.chk_trans = QCheckBox("Transcribe & Create Subtitles (AI)")
+        l1.addWidget(self.chk_trans)
+        
+        self.chk_burn = QCheckBox("Hard-Burn Subtitles to Video")
+        l1.addWidget(self.chk_burn)
+        l1.addStretch()
         
         # Tab 2
-        ttk.Checkbutton(t2, text="Normalize Audio (Broadcast Levels)", variable=self.opts['norm']).pack(anchor=tk.W)
-        ttk.Checkbutton(t2, text="Clean Voice (Remove Background Noise)", variable=self.opts['denoise']).pack(anchor=tk.W)
-        ttk.Checkbutton(t2, text="Auto-Remove Silence (Jump Cuts)", variable=self.opts['silence']).pack(anchor=tk.W)
-        ttk.Checkbutton(t2, text="Mute All Audio (B-Roll mode)", variable=self.opts['mute']).pack(anchor=tk.W)
-        ttk.Separator(t2, orient='horizontal').pack(fill=tk.X, pady=5)
-        ttk.Checkbutton(t2, text="Extract Audio Only (.mp3)", variable=self.opts['audio_only']).pack(anchor=tk.W)
-        ttk.Checkbutton(t2, text="Extract Thumbnail (1s mark)", variable=self.opts['thumb']).pack(anchor=tk.W)
-        ttk.Checkbutton(t2, text="Generate Social Media Safe-Zone Preview Image", variable=self.opts['safe_zone']).pack(anchor=tk.W)
-        ttk.Checkbutton(t2, text="Create GIF clip", variable=self.opts['gif']).pack(anchor=tk.W)
+        t2 = QWidget()
+        l2 = QVBoxLayout(t2)
+        tabs.addTab(t2, "Audio & Extras")
         
-        self.btn = ttk.Button(f, text="Start Processing", command=self.run)
-        self.btn.pack(fill=tk.X, pady=5)
+        self.chk_norm = QCheckBox("Normalize Audio (Broadcast Levels)")
+        self.chk_denoise = QCheckBox("Clean Voice (Remove Background Noise)")
+        self.chk_silence = QCheckBox("Auto-Remove Silence (Jump Cuts)")
+        self.chk_mute = QCheckBox("Mute All Audio (B-Roll mode)")
+        self.chk_audio = QCheckBox("Extract Audio Only (.mp3)")
+        self.chk_thumb = QCheckBox("Extract Thumbnail (1s mark)")
+        self.chk_safe = QCheckBox("Generate Social Media Safe-Zone Preview Image")
+        self.chk_gif = QCheckBox("Create GIF clip")
         
-        self.log_txt = tk.Text(f, height=6, state='disabled')
-        self.log_txt.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(f, text="© 2026 Penelope Rose. Proprietary License. All rights reserved.", font=("", 10, "italic"), foreground="gray").pack(pady=2)
+        for c in (self.chk_norm, self.chk_denoise, self.chk_silence, self.chk_mute, 
+                  self.chk_audio, self.chk_thumb, self.chk_safe, self.chk_gif):
+            l2.addWidget(c)
+        l2.addStretch()
+        
+        self.btn_run = QPushButton("Start Processing")
+        self.btn_run.clicked.connect(self.run)
+        l.addWidget(self.btn_run)
+        
+        self.log_txt = QTextEdit()
+        self.log_txt.setReadOnly(True)
+        l.addWidget(self.log_txt)
+        
+        copy = QLabel("<i>© 2026 Penelope Rose. Proprietary License. All rights reserved.</i>")
+        copy.setStyleSheet("color: gray;")
+        l.addWidget(copy)
 
     def sel_vids(self):
-        fs = filedialog.askopenfilenames()
+        fs, _ = QFileDialog.getOpenFileNames(self, "Select Videos")
         if fs:
-            self.videos = list(fs)
-            self.vid_lbl.config(text=f"{len(self.videos)} videos selected")
+            self.videos = fs
+            self.lbl_vids.setText(f"{len(fs)} videos selected")
+
+    def sel_wm(self):
+        f, _ = QFileDialog.getOpenFileName(self, "Select Watermark", "", "Images (*.png)")
+        if f: self.watermark_path = f
 
     def log(self, msg):
-        self.log_txt.config(state='normal')
-        self.log_txt.insert(tk.END, msg + "\n")
-        self.log_txt.see(tk.END)
-        self.log_txt.config(state='disabled')
-        self.root.update()
+        self.log_txt.append(msg)
+        QApplication.processEvents()
 
     def run(self):
         if not self.videos: return
-        self.btn.config(state='disabled')
+        self.btn_run.setEnabled(False)
         threading.Thread(target=self.process, daemon=True).start()
 
     def process(self):
@@ -111,64 +124,65 @@ class QuaklerApp:
                 out = base + "_quakler"
                 
                 srt = None
-                if self.opts['transcribe'].get() or self.opts['burn_subs'].get():
+                if self.chk_trans.isChecked() or self.chk_burn.isChecked():
                     self.log("AI Transcribing...")
                     subprocess.run(["/Users/penelope/homebrew/bin/whisper", vid, "--model", "tiny.en", "--output_dir", os.path.dirname(vid), "--output_format", "srt"], check=True)
                     srt = base + ".srt"
                 
-                if self.opts['audio_only'].get():
+                if self.chk_audio.isChecked():
                     subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", vid, "-q:a", "0", "-map", "a", out+".mp3"])
                     continue
                 
                 cmd = ["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", vid]
-                if self.watermark.get(): cmd.extend(["-i", self.watermark.get()])
+                if self.watermark_path: cmd.extend(["-i", self.watermark_path])
                 
-                if self.trim_s.get(): cmd.extend(["-ss", self.trim_s.get()])
-                if self.trim_e.get(): cmd.extend(["-to", self.trim_e.get()])
+                if self.ent_s.text(): cmd.extend(["-ss", self.ent_s.text()])
+                if self.ent_e.text(): cmd.extend(["-to", self.ent_e.text()])
                 
                 vf, af = [], []
                 
-                if self.opts['crop916'].get(): vf.append("crop=ih*(9/16):ih")
-                if self.watermark.get(): vf.append("overlay=W-w-10:H-h-10")
-                if self.opts['burn_subs'].get() and srt: vf.append(f"subtitles='{srt.replace(':', '\\:')}'")
+                if self.chk_crop.isChecked(): vf.append("crop=ih*(9/16):ih")
+                if self.watermark_path: vf.append("overlay=W-w-10:H-h-10")
+                if self.chk_burn.isChecked() and srt: vf.append(f"subtitles='{srt.replace(':', '\\:')}'")
                 
-                if self.opts['mute'].get(): cmd.append("-an")
+                if self.chk_mute.isChecked(): cmd.append("-an")
                 else:
-                    if self.opts['norm'].get(): af.append("loudnorm=I=-16:TP=-1.5:LRA=11")
-                    if self.opts['denoise'].get(): af.append("afftdn")
-                    if self.opts['silence'].get(): af.append("silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB")
+                    if self.chk_norm.isChecked(): af.append("loudnorm=I=-16:TP=-1.5:LRA=11")
+                    if self.chk_denoise.isChecked(): af.append("afftdn")
+                    if self.chk_silence.isChecked(): af.append("silenceremove=stop_periods=-1:stop_duration=0.5:stop_threshold=-30dB")
                 
                 if vf: cmd.extend(["-vf", ",".join(vf)])
                 if af: cmd.extend(["-af", ",".join(af)])
                 
-                if self.opts['hwaccel'].get():
-                    c = "h264_videotoolbox" if self.codec.get() == "h264" else "hevc_videotoolbox"
+                if self.chk_hw.isChecked():
+                    c = "h264_videotoolbox" if self.rad_h264.isChecked() else "hevc_videotoolbox"
                     cmd.extend(["-c:v", c, "-b:v", "5000k"])
                 else:
-                    c = "libx264" if self.codec.get() == "h264" else "libx265"
+                    c = "libx264" if self.rad_h264.isChecked() else "libx265"
                     cmd.extend(["-c:v", c])
                     
                 cmd.extend(["-movflags", "+faststart", out+".mp4"])
                 self.log("Rendering Video...")
                 subprocess.run(cmd, check=True)
                 
-                if self.opts['thumb'].get():
+                if self.chk_thumb.isChecked():
                     subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-ss", "00:00:01", "-i", out+".mp4", "-vframes", "1", out+"_thumb.jpg"])
                 
-                if self.opts['gif'].get():
+                if self.chk_gif.isChecked():
                     subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", out+".mp4", "-vf", "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse", out+".gif"])
                 
-                if self.opts['safe_zone'].get():
+                if self.chk_safe.isChecked():
                     subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", out+".mp4", "-vframes", "1", "-vf", "drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=red@0.5:t=fill,drawbox=x=iw*0.8:y=ih*0.4:w=iw*0.2:h=ih*0.4:color=red@0.5:t=fill", out+"_safezone.jpg"])
                     
         except Exception as e:
             self.log(f"Error: {e}")
         finally:
             self.log("Done!")
-            self.btn.config(state='normal')
+            self.btn_run.setEnabled(True)
 
 if __name__ == '__main__':
-    root = tk.Tk()
-    QuaklerApp(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    ex = QuaklerApp()
+    ex.show()
+    sys.exit(app.exec_())
 
