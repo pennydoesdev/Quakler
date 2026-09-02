@@ -51,6 +51,7 @@ class QuaklerApp(QMainWindow):
         
         self.videos = []
         self.watermark_path = ""
+        self.chap_path = ""
         
         w = QWidget()
         l = QVBoxLayout(w)
@@ -67,9 +68,15 @@ class QuaklerApp(QMainWindow):
         self.lbl_vids.setStyleSheet("color: #AAAAAA;")
         l.addWidget(self.lbl_vids)
         
+        
         self.btn_wm = QPushButton("Select Watermark (.png)")
         self.btn_wm.clicked.connect(self.sel_wm)
         l.addWidget(self.btn_wm)
+        
+        self.btn_chap = QPushButton("Select Chapters (.txt - YouTube Format)")
+        self.btn_chap.clicked.connect(self.sel_chap)
+        l.addWidget(self.btn_chap)
+
         
         # Tabs
         tabs = QTabWidget()
@@ -147,9 +154,15 @@ class QuaklerApp(QMainWindow):
             self.videos = fs
             self.lbl_vids.setText(f"{len(fs)} videos selected")
 
+
     def sel_wm(self):
         f, _ = QFileDialog.getOpenFileName(self, "Select Watermark", "", "Images (*.png)")
         if f: self.watermark_path = f
+
+    def sel_chap(self):
+        f, _ = QFileDialog.getOpenFileName(self, "Select Chapters (YouTube Format)", "", "Text Files (*.txt)")
+        if f: self.chap_path = f
+
 
     def log(self, msg):
         self.log_txt.append(msg)
@@ -172,12 +185,50 @@ class QuaklerApp(QMainWindow):
                     self.log("AI Transcribing...")
                     subprocess.run(["/Users/penelope/homebrew/bin/whisper", vid, "--model", "tiny.en", "--output_dir", os.path.dirname(vid), "--output_format", "srt"], check=True)
                     srt = base + ".srt"
-                
                 if self.chk_audio.isChecked():
                     subprocess.run(["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", vid, "-q:a", "0", "-map", "a", out+".mp3"])
                     continue
                 
+                # Handle Chapters
+                ffmeta = None
+                if self.chap_path and os.path.exists(self.chap_path):
+                    try:
+                        dur_out = subprocess.check_output(["/Users/penelope/homebrew/bin/ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", vid])
+                        duration = float(dur_out.decode().strip())
+                        
+                        lines = open(self.chap_path).read().strip().split('
+')
+                        meta = ";FFMETADATA1
+"
+                        chapters = []
+                        for line in lines:
+                            parts = line.strip().split(" ", 1)
+                            if len(parts) < 2: continue
+                            t_parts = parts[0].split(':')
+                            secs = 0
+                            if len(t_parts) == 2: secs = int(t_parts[0])*60 + int(t_parts[1])
+                            elif len(t_parts) == 3: secs = int(t_parts[0])*3600 + int(t_parts[1])*60 + int(t_parts[2])
+                            chapters.append((secs * 1000, parts[1]))
+                            
+                        for i in range(len(chapters)):
+                            start = chapters[i][0]
+                            end = chapters[i+1][0] if i+1 < len(chapters) else int(duration*1000)
+                            meta += f"
+[CHAPTER]
+TIMEBASE=1/1000
+START={start}
+END={end}
+title={chapters[i][1]}
+"
+                            
+                        ffmeta = base + "_ffmeta.txt"
+                        with open(ffmeta, "w") as f: f.write(meta)
+                        self.log("Loaded YouTube chapters...")
+                    except Exception as e:
+                        self.log(f"Chapter Error: {e}")
+
                 cmd = ["/Users/penelope/homebrew/bin/ffmpeg", "-y", "-i", vid]
+                if ffmeta: cmd.extend(["-i", ffmeta, "-map_metadata", "1"])
                 if self.watermark_path: cmd.extend(["-i", self.watermark_path])
                 
                 if self.ent_s.text(): cmd.extend(["-ss", self.ent_s.text()])
